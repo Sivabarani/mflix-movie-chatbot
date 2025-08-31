@@ -1,3 +1,4 @@
+# store_data_db.py
 from sqlalchemy import create_engine
 import psycopg2
 import pandas as pd
@@ -11,35 +12,55 @@ db_params = {
     'password': '18shiva',
 }
 
-# Connect with psycopg2 (optional for raw queries)
-conn = psycopg2.connect(
-    host=db_params['host'],
-    database=db_params['database'],
-    user=db_params['user'],
-    password=db_params['password'],
-)
-conn.set_session(autocommit=True)
-cur = conn.cursor()
+def main():
+    # psycopg2 connection for raw queries
+    conn = psycopg2.connect(
+        host=db_params['host'],
+        database=db_params['database'],
+        user=db_params['user'],
+        password=db_params['password'],
+    )
+    conn.set_session(autocommit=True)
+    cur = conn.cursor()
 
-# SQLAlchemy engine for pandas to_sql upload
-engine = create_engine(f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}/{db_params["database"]}')
+    # SQLAlchemy engine for pandas
+    engine = create_engine(
+        f'postgresql://{db_params["user"]}:{db_params["password"]}@{db_params["host"]}/{db_params["database"]}'
+    )
 
-# Directory where cleaned CSVs are saved
-CLEANED_DIR = "cleaned_data"
-
-if __name__ == "__main__":
+    # Directory for cleaned CSVs
+    CLEANED_DIR = "cleaned_data"
     tables = ['sessions', 'users', 'comments', 'theaters', 'movies', 'embedded_movies']
 
     for table in tables:
         file_path = os.path.join(CLEANED_DIR, f"{table}_cleaned.csv")
-        print(f"Uploading {file_path} to PostgreSQL table '{table}'...")
+        
+        # Check if table exists and has rows
+        cur.execute(f"""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = %s
+            );
+        """, (table,))
+        table_exists = cur.fetchone()[0]
 
-        # Read the cleaned CSV file
-        df = pd.read_csv(file_path)
+        if table_exists:
+            cur.execute(f"SELECT COUNT(*) FROM {table};")
+            row_count = cur.fetchone()[0]
+        else:
+            row_count = 0
 
-        # Upload to PostgreSQL - replace table if exists
-        df.to_sql(name=table, con=engine, if_exists='replace', index=False)
+        if row_count > 0:
+            print(f"Skipping upload for '{table}' — already has {row_count} rows.")
+        else:
+            print(f"Uploading {file_path} to PostgreSQL table '{table}'...")
+            df = pd.read_csv(file_path)
+            df.to_sql(name=table, con=engine, if_exists='replace', index=False)
+            print(f"Uploaded {table} table successfully.\n")
 
-        print(f"Uploaded {table} table successfully.\n")
+    print("Upload process complete.")
 
-    print("All cleaned tables uploaded to PostgreSQL.")
+
+# Allow running standalone too
+if __name__ == "__main__":
+    main()

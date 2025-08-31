@@ -5,6 +5,15 @@ RAW_DIR = "raw_data"
 CLEANED_DIR = "cleaned_data"
 os.makedirs(CLEANED_DIR, exist_ok=True)
 
+EXPECTED_FILES = [
+    "sessions_cleaned.csv",
+    "users_cleaned.csv",
+    "comments_cleaned.csv",
+    "theaters_cleaned.csv",
+    "movies_cleaned.csv",
+    "embedded_movies_cleaned.csv"
+]
+
 class BaseCleaner:
     def __init__(self, df):
         self.df = df
@@ -134,10 +143,23 @@ def clean_and_save(table_name):
     cleaned_df.to_csv(f"{CLEANED_DIR}/{table_name}_cleaned.csv", index=False)
     print(f"Saved cleaned {table_name} to {CLEANED_DIR}/{table_name}_cleaned.csv\n")
 
+def run():
+    """Run cleaning only if ALL expected cleaned files are missing."""
+    missing = [f for f in EXPECTED_FILES if not os.path.exists(os.path.join(CLEANED_DIR, f))]
 
-if __name__ == "__main__":
-    tables = ['sessions', 'users', 'comments', 'theaters', 'movies', 'embedded_movies']
+    if not missing:
+        print("Skipping cleaning, all cleaned CSVs already exist.")
+        return
+
+    print(f"Missing {len(missing)} cleaned files: {missing}")
+    print("Running cleaning process...")
+
+    tables = ["sessions","users","comments","theaters","movies","embedded_movies"]
     for table in tables:
         clean_and_save(table)
 
+    print("Cleaning complete.")
+    
+if __name__ == "__main__":
+    run()
     print("All tables cleaned and saved.")

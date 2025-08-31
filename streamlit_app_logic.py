@@ -187,8 +187,6 @@ def answer_question(query: str, vs: FAISS, id_lookup: Dict[str, Document], df_cs
 # Streamlit App
 # ----------------------------
 def main():
-    st.title("🎬 Movie Q&A Assistant (RAG + Perplexity)")
-
     # Load docs + FAISS
     with st.spinner("Loading data and building index..."):
         docs, by_id = load_documents(CSV_PATH)
